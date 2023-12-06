@@ -8,17 +8,29 @@ const wss = new WebSocket.Server({ server });
 let clients = {};
 
 wss.on('connection', (ws) => {
-    const id = generateUniqueId();
-    clients[id] = ws;
-    console.log('Nuevo cliente conectado:', id);
+    let id;
 
     ws.on('message', (message) => {
         console.log('Mensaje recibido:', message);
-        for (let clientId in clients) {
-            if (clientId !== id) {
-                clients[clientId].send(message);
-            }
+        const data = JSON.parse(message);
+        if(data.type === 'connection') {
+            id = data.id;
+            clients[id] = ws;
+            console.log('Cliente conectado: ', id);
         }
+        if(data.type === 'message') {
+            const message = {
+                type: 'message',
+                text: data.text,
+                senderId: id
+            };   
+        }
+        Object.keys(clients).forEach(clientId => {
+            if (clientId !== id) {
+                clients[clientId].send(JSON.stringify(message));
+            }
+        });
+
     });
 
     ws.on('close', () => {
@@ -26,10 +38,6 @@ wss.on('connection', (ws) => {
         console.log('Cliente desconectado:', id);
     });
 });
-
-function generateUniqueId() {
-    return Math.random().toString(36).substr(2, 9);
-}
 
 server.listen(3001, () => {
     console.log('Servidor ejecutándose en http://localhost:3001');
