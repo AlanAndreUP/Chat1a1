@@ -5,32 +5,43 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-let clients = {};
-
+var clients = {};
 wss.on('connection', (ws) => {
-    let id;
+    var id;
 
-    ws.on('message', (message) => {
-        console.log('Mensaje recibido:', message);
-        const data = JSON.parse(message);
-        if(data.type === 'connection') {
-            id = data.id;
-            clients[id] = ws;
-            console.log('Cliente conectado: ', id);
-        }
-        if(data.type === 'message') {
-            const message = {
-                type: 'message',
-                text: data.text,
-                senderId: id
-            };   
-        }
-        Object.keys(clients).forEach(clientId => {
-            if (clientId !== id) {
-                clients[clientId].send(JSON.stringify(message));
+    ws.on('message', (incomingMessage) => {
+        console.log('Mensaje recibido:', incomingMessage);
+
+        try {
+            const data = JSON.parse(incomingMessage);
+          
+            if (data.type === 'connection') {
+                id = data.clientId;
+                clients[id] = ws;
+                console.log('Cliente conectado: ', id);
+            } else if (data.type === 'message') {
+               console.log(data);
+                const messageToSend = {
+                    type: 'message',
+                    text: data.text,
+                    senderId: data.clientId
+                };
+                var IDSend = data.clientId
+
+                // Enviar a otros clientes
+                Object.keys(clients).forEach(clientId => {
+                    console.log(clientId);
+                    console.log(IDSend);
+                    if (clientId !== IDSend) {
+                        console.log("Enviado")
+                        clients[clientId].send(JSON.stringify(messageToSend));
+                    }
+                });
             }
-        });
-
+        } catch (error) {
+            console.log('Error al parsear el mensaje:', error);
+            // Maneja cualquier error aquí
+        }
     });
 
     ws.on('close', () => {
